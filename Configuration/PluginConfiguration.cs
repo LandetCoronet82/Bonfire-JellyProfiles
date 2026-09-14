@@ -93,6 +93,14 @@ namespace Jellyfin.Profiles.Configuration
         public string IndexInjectionMode { get; set; } = IndexInjectionModes.Middleware;
 
         /// <summary>
+        /// Optional base URL under which the plugin is hosted. If set to a non-empty
+        /// value (for example "/mybase"), injected paths like
+        /// "/plugins/profiles/profiles.js" become "/mybase/plugins/profiles/profiles.js".
+        /// Leave empty to use the server root.
+        /// </summary>
+        public string? BaseUrl { get; set; }
+
+        /// <summary>
         /// PBKDF2 hash of the emergency disable code, or null when the feature is off (the
         /// default). Entering the code shuts the plugin's client script down until the
         /// server restarts — see <see cref="Plugin.IsPanicDisabled"/>.

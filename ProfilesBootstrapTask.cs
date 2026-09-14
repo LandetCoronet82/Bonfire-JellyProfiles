@@ -102,7 +102,7 @@ namespace Jellyfin.Profiles
         }
 
         // Shared with the middleware — see WebInjection for what these contain and why.
-        private const string BodyMarker = WebInjection.BodyMarker;
+        private static readonly string BodyMarker = WebInjection.BodyMarker;
         private const string HeadScript = WebInjection.HeadScript;
         private const string HeadMarker = WebInjection.HeadMarker;
 
