@@ -625,6 +625,12 @@
                 <div class="fieldDescription jpf-mt-1" id="middlewareStatusLine"></div>
             </div>
 
+            <div class="inputContainer">
+                <label class="inputLabel" for="baseUrl">Base URL</label>
+                <input is="emby-input" type="text" id="baseUrl" placeholder="/base (optional)" />
+                <div class="fieldDescription">Optional prefix for plugin paths, e.g. <code>/mybase</code>. Leave blank to use server root.</div>
+            </div>
+
             <div class="buttonContainer jpf-block-end">
                 <button is="emby-button" type="button" id="saveInjectionMode" class="raised jpf-narrow">Save method</button>
             </div>
@@ -830,6 +836,7 @@
                     page.querySelector('#indexInjectionMode').value =
                         (mode === 'both' || mode === 'file') ? mode : 'middleware';
                     updateInjectionModeHelp(page);
+                    page.querySelector('#baseUrl').value = (field(config, 'BaseUrl') || '') ;
                     loadMappings(page);
                     loadAuditLogs(page);
                     loadAvatarLibrary(page);
@@ -2164,6 +2171,7 @@
                         disallowCustomAvatarUploads: page.querySelector('#disallowCustomAvatars').checked,
                         defaultAskOnStartup: page.querySelector('#defaultAskOnStartup').checked,
                         defaultSwitcherLocation: page.querySelector('#defaultSwitcherLocation').value === 'menu' ? 'menu' : 'button',
+                            baseUrl: (page.querySelector('#baseUrl') && page.querySelector('#baseUrl').value) ? page.querySelector('#baseUrl').value.trim() : '',
                         indexInjectionMode: page.querySelector('#indexInjectionMode').value,
                         enableClientPinLogin: page.querySelector('#enableClientPinLogin').checked,
                         enableClientProfileList: page.querySelector('#enableClientProfileList').checked,

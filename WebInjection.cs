@@ -33,14 +33,13 @@ namespace Jellyfin.Profiles
 
         /// <summary>
         /// The exact script tag to inject before &lt;/body&gt;. The URL
-        /// /plugins/profiles/profiles.js is the path Jellyfin uses to serve embedded resources
-        /// from plugin assemblies.
+        /// may be prefixed by the administrator-supplied BaseUrl in configuration.
         /// </summary>
         internal static string BodyScriptTag =>
-            $"<script src=\"/plugins/profiles/profiles.js?v={ScriptVersion}\" defer></script>";
+            $"<script src=\"{BasePrefix()}/plugins/profiles/profiles.js?v={ScriptVersion}\" defer></script>";
 
         /// <summary>Unique substring to detect whether the body tag is already present.</summary>
-        internal const string BodyMarker = "/plugins/profiles/profiles.js";
+        internal static string BodyMarker => BasePrefix() + "/plugins/profiles/profiles.js";
 
         /// <summary>
         /// Tiny inline script injected into &lt;head&gt; — runs before any deferred bundle,
@@ -98,20 +97,52 @@ namespace Jellyfin.Profiles
         /// <summary>Unique substring to detect whether the head script is already present.</summary>
         internal const string HeadMarker = "jpf-eh";
 
+        private static string BasePrefix()
+        {
+            try
+            {
+                // Use reflection to avoid a compile-time/type-load dependency on Plugin
+                var asm = typeof(WebInjection).Assembly;
+                var pluginType = asm.GetType("Jellyfin.Profiles.Plugin", false);
+                if (pluginType == null) return string.Empty;
+
+                var instanceProp = pluginType.GetProperty("Instance", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                var instance = instanceProp?.GetValue(null);
+                if (instance == null) return string.Empty;
+
+                var configProp = pluginType.GetProperty("Configuration", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.FlattenHierarchy);
+                var config = configProp?.GetValue(instance);
+                if (config == null) return string.Empty;
+
+                var baseUrlProp = config.GetType().GetProperty("BaseUrl", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                var baseUrlObj = baseUrlProp?.GetValue(config) as string;
+                if (string.IsNullOrWhiteSpace(baseUrlObj)) return string.Empty;
+
+                var s = baseUrlObj.Trim();
+                if (!s.StartsWith("/")) s = "/" + s;
+                if (s.EndsWith("/")) s = s.TrimEnd('/');
+                return s;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
         // Pulls the ?v= value out of whatever plugin script tag is currently in the HTML.
         // Comparing the extracted version beats comparing the whole tag string: a hand-edited
         // file with different attribute order, quoting or spacing is still recognised as
         // current instead of being reported as stale forever.
         private static readonly Regex InjectedVersionRegex = new(
-            @"/plugins/profiles/profiles\.js\?v=([^""'&\s>]+)",
+            "(?:/[^\"'&\\s>]*)?/plugins/profiles/profiles\\.js\\?v=([^\"'&\\s>]+)",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex HeadScriptRegex = new(
-            @"<script id=""jpf-eh"">[\s\S]*?</script>",
+            "<script id=\"jpf-eh\">[\\s\\S]*?</script>",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex BodyScriptRegex = new(
-            @"<script[^>]*src=[""'][^""']*/plugins/profiles/profiles\.js[^""']*[""'][^>]*>\s*(</script>)?",
+            "<script[^>]*src=[\"'][^\"']*(?:/[^\"']*)?/plugins/profiles/profiles\\.js[^\"']*[\"'][^>]*>\\s*(</script>)?",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         /// <summary>Version recorded in the HTML's script tag, or null if absent/unparseable.</summary>
@@ -241,11 +272,11 @@ namespace Jellyfin.Profiles
         // stale fragment in place, and a pattern that swallowed the surrounding newline
         // would glue the replacement to whatever it sits next to.
         private static readonly Regex HeadScriptRemovalRegex = new(
-            @"(\r?\n)?<script id=""jpf-eh"">[\s\S]*?</script>",
+            "(\\r?\\n)?<script id=\"jpf-eh\">[\\s\\S]*?</script>",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex BodyScriptRemovalRegex = new(
-            @"<script[^>]*src=[""'][^""']*/plugins/profiles/profiles\.js[^""']*[""'][^>]*>\s*(</script>)?(\r?\n)?",
+            "<script[^>]*src=[\"'][^\"']*(?:/[^\"']*)?/plugins/profiles/profiles\\.js[^\"']*[\"'][^>]*>\\s*(</script>)?(\\r?\\n)?",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
     }
 }
